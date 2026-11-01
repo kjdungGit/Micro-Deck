@@ -1,0 +1,6 @@
+{
+    "stm32cube-ide-clangd.enable": false,
+    "C_Cpp.intelliSenseEngine": "Default",
+    "C_Cpp.default.configurationProvider": "platformio.platformio-ide",
+    "C_Cpp.default.intelliSenseMode": "gcc-x64"
+}

@@ -194,7 +194,6 @@ void traverseMenu(unsigned int direction)
     }//In the case of a default statement, nothing happens, but the function continues for the case that we want to refresh the menu without a direction change.
 
     currentAppSelection = (currentAppSelection + App::AppCount) % App::AppCount; // wrap
-    Serial.printf("Current app selection: %d %d\n", currentAppSelection, App::AppCount);
 
     for (int i = -1; i < 2; i++)
     {
@@ -208,7 +207,6 @@ void traverseMenu(unsigned int direction)
         catch (const std::out_of_range &e)
         {
             lv_label_set_text(lv_app_select_labels[i + 1], "APP");
-            Serial.println("Error: App index out of range while traversing menu. Resetting label to default.");
         }
     }
 }

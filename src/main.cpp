@@ -68,6 +68,5 @@ void setup()
 void loop()
 {
   delay(5);
-  // setTimeText(getNow());
   daemonManager.tick();
 }

@@ -140,11 +140,6 @@ void setupNVS(bool fresh)
 #endif
 }
 
-void buttonShutDown()
-{
-    goToSleep(SleepStyle::ESP_SLEEP_LIGHT);
-}
-
 void setupApps()
 {
     // App *App_RAMCPUVISUALIZER = App::createApp_Object(0x0001,"CPU SRAM Visualizer", Utility, REFRESH_SLOW);
@@ -171,5 +166,4 @@ void init(bool fresh)
     setupRTC();
     setupButtons();
     setupApps();
-    buttonK1->releasedFunction = buttonShutDown;
 }

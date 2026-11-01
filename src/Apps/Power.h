@@ -24,9 +24,11 @@ lv_style_t powerScreenStyle;
 lv_obj_t *lv_sleep_power;
 lv_obj_t *lv_shut_power;
 lv_obj_t *lv_return_power;
+lv_obj_t *lv_selection_label;
 
 lv_style_t powerButtonMainStyle;
 lv_style_t powerButtonSelectStyle;
+lv_style_t powerLabelStyle;
 
 byte selection;
 LoopDaemon *powerDaemon = nullptr;
@@ -37,6 +39,23 @@ void buildPowerbutton(lv_obj_t *obj)
     lv_obj_set_size(obj, 24, 24);
     lv_obj_add_style(obj, &powerButtonMainStyle, LV_STATE_DEFAULT);
     lv_obj_add_style(obj, &powerButtonSelectStyle, LV_STATE_HOVERED);
+}
+
+void buildSelectionLabel()
+{
+    lv_selection_label = lv_label_create(lv_power_screen);
+    lv_style_init(&powerLabelStyle);
+    lv_obj_set_flag(lv_selection_label, LV_OBJ_FLAG_IGNORE_LAYOUT, true);
+
+    lv_style_set_text_align(&powerLabelStyle, LV_TEXT_ALIGN_CENTER);
+    lv_style_set_border_width(&powerLabelStyle, 0);
+    lv_style_set_text_font(&powerLabelStyle, &fixed6);
+    lv_style_set_text_color(&powerLabelStyle, lv_color_white()); 
+
+    lv_obj_set_size(lv_selection_label, 50, 16);
+    lv_obj_set_pos(lv_selection_label,64-25, 20);
+
+    lv_obj_add_style(lv_selection_label, &powerLabelStyle, LV_PART_MAIN);
 }
 
 void buildMenu(lv_obj_t *parent)
@@ -53,8 +72,9 @@ void buildMenu(lv_obj_t *parent)
 
     lv_style_set_bg_color(&powerScreenStyle, lv_color_black());
     lv_style_set_radius(&powerScreenStyle, 0);
+    lv_style_set_border_width(&powerScreenStyle, 0);
     lv_style_set_pad_hor(&powerScreenStyle, 20);
-    lv_style_set_pad_ver(&powerScreenStyle, 10);
+    lv_style_set_pad_ver(&powerScreenStyle, 50);
     lv_obj_add_style(lv_power_screen, &powerScreenStyle, LV_PART_MAIN);
 
     lv_style_init(&powerButtonMainStyle);
@@ -80,6 +100,8 @@ void buildMenu(lv_obj_t *parent)
     buildPowerbutton(lv_shut_power);
     buildPowerbutton(lv_return_power);
     lv_obj_set_size(lv_return_power, 18, 18);
+
+    buildSelectionLabel();
 }
 
 void closePowerMenu()
@@ -129,6 +151,20 @@ void traversePowerMenu(int direction)
     {
         lv_obj_set_state(buttons[i], LV_STATE_HOVERED, selection == i);
         lv_obj_set_state(buttons[i], LV_STATE_DEFAULT, selection != i);
+    }
+
+
+    switch (selection)
+    {
+    case 0:
+        lv_label_set_text(lv_selection_label, "Return");
+        break;
+    case 1:
+        lv_label_set_text(lv_selection_label, "Sleep");
+        break;
+    case 2:
+        lv_label_set_text(lv_selection_label, "Power Off");
+        break;
     }
 }
 
