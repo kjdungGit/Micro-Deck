@@ -41,6 +41,7 @@ public:
     String getName() { return name; }
     int getID() { return int(id); }
     App_Type getType() { return type; }
+    uint32_t getRefreshSpeedMs() const { return static_cast<uint32_t>(refreshSpeed); }
 
     static byte getAppIDatIndex(int index)
     {

@@ -12,6 +12,6 @@ void setupRTC();
 void setupNVS(bool freshUpload);
 void setupButtons();
 void setupApps();
-
+void setupBatteryPin();
 
 void init(bool fresh);

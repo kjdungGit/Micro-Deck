@@ -4,12 +4,24 @@
 #include <freertos/semphr.h>
 
 #include "Apps/App.h"
+#include "Apps/Task-Manager.h"
+#include "battery.h"
 #include "buttons.h"
 #include "clock.h"
 #include "display.h"
 #include "init.h"
 #include "sleep.h"
+#include "Components/timeLabel.h"
 #include "Components/mainMenu/screenMainMenu.h"
+
+/**
+ * Runtime task implementation.
+ *
+ * This file owns the FreeRTOS worker tasks that coordinate the UI loop, button
+ * polling, periodic main-menu refreshes, and app execution. The runtime acts as
+ * the central dispatcher for app launches, input routing, and power-management
+ * transitions.
+ */
 
 namespace
 {
@@ -17,7 +29,7 @@ constexpr uint8_t NO_APP_ID = APP_ID_DEFAULT;
 constexpr UBaseType_t UI_QUEUE_LENGTH = 24;
 constexpr UBaseType_t APP_QUEUE_LENGTH = 8;
 constexpr TickType_t BUTTON_POLL_TICKS = pdMS_TO_TICKS(10);
-constexpr TickType_t MAIN_REFRESH_TICKS = pdMS_TO_TICKS(33);
+constexpr TickType_t MAIN_REFRESH_TICKS = pdMS_TO_TICKS(1000);
 
 enum class AppTaskMessageType : uint8_t
 {
@@ -44,11 +56,19 @@ TaskHandle_t appTaskHandle = nullptr;
 std::atomic<bool> mainMenuActive{true};
 std::atomic<uint8_t> targetAppId{NO_APP_ID};
 
+/**
+ * Waits until the task startup gate is released so all worker threads begin in
+ * sync after the runtime queues and semaphores have been created.
+ */
 void waitForTaskStart()
 {
     xSemaphoreTake(taskStartGate, portMAX_DELAY);
 }
 
+/**
+ * Executes a runtime UI message by updating the appropriate display or button
+ * state.
+ */
 void dispatchUiMessage(const RuntimeUiMessage &message)
 {
     switch (message.type)
@@ -83,11 +103,17 @@ void dispatchUiMessage(const RuntimeUiMessage &message)
     }
     case RuntimeUiMessageType::RefreshMainTime:
         if (mainMenuActive.load())
-            setMenu_TimeLabelInformation(getNow());
+        {
+            const DateTime now = getNow();
+            setMenu_TimeLabelInformation(now);
+            setTimeText(now);
+        }
         break;
     case RuntimeUiMessageType::OpenApp:
         if (message.value == APP_ID_POWER)
             activatePowerScreenUI();
+        else if (message.value == APP_ID_TSKMNGR)
+            activateTaskManagerUI();
         else
         {
             Serial.printf("[Runtime] No UI registered for app id %u\n", message.value);
@@ -97,9 +123,14 @@ void dispatchUiMessage(const RuntimeUiMessage &message)
     case RuntimeUiMessageType::CloseActiveApp:
         if (message.value == APP_ID_POWER)
             restoreMainScreenUI();
+        else if (message.value == APP_ID_TSKMNGR)
+            restoreTaskManagerUI();
         break;
     case RuntimeUiMessageType::UpdatePowerSelection:
         setPowerSelectionUI(message.value);
+        break;
+    case RuntimeUiMessageType::UpdateTaskManagerGraphs:
+        updateGraphs();
         break;
     case RuntimeUiMessageType::EnterSleep:
     {
@@ -112,10 +143,17 @@ void dispatchUiMessage(const RuntimeUiMessage &message)
     }
 }
 
+/**
+ * UI pump task: receives queued runtime notifications, applies them to the
+ * active screen state, and advances the LVGL tick loop.
+ */
 void uiTask(void *)
 {
     waitForTaskStart();
     setupUI();
+    const DateTime now = getNow();
+    setMenu_TimeLabelInformation(now);
+    setTimeText(now);
     buttonManager.buttonsEnabled = true;
     xSemaphoreGive(uiReady);
 
@@ -137,6 +175,10 @@ void uiTask(void *)
     }
 }
 
+/**
+ * Polls physical buttons on a fixed cadence and forwards each change into the
+ * runtime UI message queue.
+ */
 void buttonTask(void *)
 {
     waitForTaskStart();
@@ -148,6 +190,9 @@ void buttonTask(void *)
     }
 }
 
+/**
+ * Refreshes the main menu time display while the main screen is active.
+ */
 void mainTask(void *)
 {
     waitForTaskStart();
@@ -160,6 +205,9 @@ void mainTask(void *)
     }
 }
 
+/**
+ * Executes app lifecycle messages such as launch, close, and input events.
+ */
 void appTask(void *)
 {
     waitForTaskStart();
@@ -185,6 +233,10 @@ void appTask(void *)
     }
 }
 
+/**
+ * Removes any runtime tasks created during startup so the system can be reset
+ * cleanly.
+ */
 void deleteCreatedTasks()
 {
     if (uiTaskHandle != nullptr)
@@ -203,6 +255,10 @@ void deleteCreatedTasks()
 }
 }
 
+/**
+ * Allocates the runtime queues and starts the worker tasks used by the UI,
+ * button polling, clock refresh, and app execution pipeline.
+ */
 bool startRuntimeTasks()
 {
     uiQueue = xQueueCreate(UI_QUEUE_LENGTH, sizeof(RuntimeUiMessage));
@@ -250,6 +306,20 @@ bool startRuntimeTasks()
         return false;
     }
 
+    if (!startBatteryMonitorTask())
+    {
+        deleteCreatedTasks();
+        vQueueDelete(uiQueue);
+        vQueueDelete(appQueue);
+        vSemaphoreDelete(taskStartGate);
+        vSemaphoreDelete(uiReady);
+        uiQueue = nullptr;
+        appQueue = nullptr;
+        taskStartGate = nullptr;
+        uiReady = nullptr;
+        return false;
+    }
+
     for (UBaseType_t i = 0; i < 4; ++i)
         xSemaphoreGive(taskStartGate);
 
@@ -261,6 +331,9 @@ bool startRuntimeTasks()
     return true;
 }
 
+/**
+ * Queues a runtime UI message for processing on the UI task.
+ */
 bool postRuntimeUiMessage(RuntimeUiMessageType type, uint8_t value)
 {
     RuntimeUiMessage message{type, value};
@@ -272,6 +345,9 @@ bool postRuntimeUiMessage(RuntimeUiMessageType type, uint8_t value)
     return true;
 }
 
+/**
+ * Converts a physical button edge event into the runtime UI message format.
+ */
 bool postButtonEvent(uint8_t pin, bool pressed)
 {
     return postRuntimeUiMessage(
@@ -279,11 +355,17 @@ bool postButtonEvent(uint8_t pin, bool pressed)
         pin);
 }
 
+/**
+ * Queues a repeat event for a button that remains held down.
+ */
 bool postButtonDownEvent(uint8_t pin)
 {
     return postRuntimeUiMessage(RuntimeUiMessageType::ButtonDown, pin);
 }
 
+/**
+ * Enqueues a launch request for the app identified by appId.
+ */
 bool enqueueAppOpen(uint8_t appId)
 {
     if (appQueue == nullptr || appId == APP_ID_DEFAULT)
@@ -306,6 +388,9 @@ bool enqueueAppOpen(uint8_t appId)
     return true;
 }
 
+/**
+ * Queues a request to close the currently active app.
+ */
 bool enqueueActiveAppClose()
 {
     if (appQueue == nullptr || targetAppId.load() == NO_APP_ID)
@@ -320,6 +405,9 @@ bool enqueueActiveAppClose()
     return true;
 }
 
+/**
+ * Forwards app input to the currently active app target.
+ */
 bool postAppInput(int8_t input)
 {
     const uint8_t appId = targetAppId.load();
@@ -338,21 +426,33 @@ bool postAppInput(int8_t input)
     return true;
 }
 
+/**
+ * Updates the global state indicating whether the main menu is currently active.
+ */
 void setMainMenuActive(bool active)
 {
     mainMenuActive.store(active);
 }
 
+/**
+ * Returns the current main menu state.
+ */
 bool isMainMenuActive()
 {
     return mainMenuActive.load();
 }
 
+/**
+ * Returns true if the current task is the runtime UI task.
+ */
 bool isRuntimeUiTask()
 {
     return uiTaskHandle != nullptr && xTaskGetCurrentTaskHandle() == uiTaskHandle;
 }
 
+/**
+ * Clears the active app target when app execution is complete.
+ */
 void finishAppExecution(uint8_t appId)
 {
     uint8_t expected = appId;

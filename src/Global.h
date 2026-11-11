@@ -11,3 +11,21 @@
 
 #define SDA_PIN D4
 #define SCL_PIN D5
+
+
+inline uint32_t getRAM_Usage(){
+    return ESP.getHeapSize() - ESP.getFreeHeap();
+};
+
+inline uint32_t getRAM_Size(){
+    return ESP.getHeapSize();
+};
+
+inline uint32_t getFlash_Usage(){
+    return ESP.getSketchSize();
+};
+
+inline float getMCUTemp()
+{
+    return temperatureRead();
+}

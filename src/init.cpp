@@ -156,12 +156,17 @@ void setupApps()
     App::createApp_Object(APP_ID_P1, "P 1", Utility, REFRESH_SLOW);
     App::createApp_Object(APP_ID_P2, "P 2", Utility, REFRESH_SLOW);
     App::createApp_Object(APP_ID_POWER, "Power", Service, REFRESH_MEDIUM);
+    App::createApp_Object(APP_ID_TSKMNGR, "Task Manager", Service, REFRESH_MEDIUM);
 
     Serial.printf("\tApps initialized {%d}:\n", App::AppCount);
     for (byte app : App::ID_List)
     {
         Serial.printf("\tApp ID: %d, Name: %s\n", app, App::getApp(app)->getName().c_str());
     }
+}
+
+void setupBatteryPin(){
+    pinMode(BAT_DIV_PIN, INPUT);
 }
 
 void init(bool fresh)
@@ -179,10 +184,12 @@ void setupUI()
     setupLVGL();
     lv_log_register_print_cb(lvglLogCallback);
     buildBlankHeader(lv_scr_act());
-    buildHeaderTimeLabel(lv_header);
     buildHeaderBootLabel(lv_header);
+    buildFullHeader();
     buildMenuScreen(lv_scr_act());
     setBoot(preferences.getInt("free_boot_count"));
     lv_obj_add_flag(lv_header, LV_OBJ_FLAG_HIDDEN);
     initMainMenuButtons(buttonManager.getButton(K3_PIN), buttonManager.getButton(K2_PIN), buttonManager.getButton(K4_PIN));
+    buttonK1->pressedFunction = []()
+    { toggleMainMenuHeader(); };
 }

@@ -1,4 +1,5 @@
 #include "screenMainMenu.h"
+#include "Components/header.h"
 #include "Image_Assets/MenuTree.h"
 #include "Apps/App.h"
 #include "buttons.h"
@@ -127,6 +128,8 @@ void initAppSelection(lv_obj_t *parent)
         lv_app_select_labels[i] = lv_label_create(lv_app_select);
         lv_obj_set_height(lv_app_select_labels[i], fixed6.line_height + 2 + 1);
         lv_obj_set_width(lv_app_select_labels[i], 35);
+        lv_label_set_long_mode(lv_app_select_labels[i],LV_LABEL_LONG_SCROLL_CIRCULAR);
+        lv_obj_set_style_anim_duration(lv_app_select_labels[i],3000,LV_PART_MAIN);
 
         lv_obj_add_style(lv_app_select_labels[i], &menuAppSelectLabelStyles[i], LV_PART_MAIN);
         lv_label_set_text(lv_app_select_labels[i], "APP");
@@ -160,14 +163,14 @@ void buildMenuScreen(lv_obj_t *parent)
     lv_obj_set_layout(lv_menu_screen, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(lv_menu_screen, LV_FLEX_FLOW_COLUMN);
 
+    lv_label_create(lv_menu_screen);
     buildMenuImage(parent);
-
-    lv_time_text = lv_label_create(lv_menu_screen);
 
     initDateTimeLabels(lv_menu_screen);
     initAppSelection(lv_menu_screen);
 
     lv_obj_move_foreground(menuImagePane);
+    lv_obj_move_foreground(lv_header);
 }
 
 void traverseMenu(unsigned int direction)
