@@ -172,6 +172,14 @@ void buildMenuScreen(lv_obj_t *parent)
 
 void traverseMenu(unsigned int direction)
 {
+    if (App::AppCount == 0)
+    {
+        currentAppSelection = 0;
+        for (lv_obj_t *label : lv_app_select_labels)
+            lv_label_set_text(label, "NO APPS");
+        return;
+    }
+
     Serial.println(currentAppSelection);
 
     switch (direction)
@@ -209,6 +217,12 @@ void traverseMenu(unsigned int direction)
             lv_label_set_text(lv_app_select_labels[i + 1], "APP");
         }
     }
+}
+
+void resetMenuNavigation()
+{
+    currentAppSelection = 0;
+    traverseMenu(0);
 }
 
 void initMainMenuButtons(Button *up, Button *down, Button *select)

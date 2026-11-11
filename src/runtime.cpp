@@ -102,8 +102,13 @@ void dispatchUiMessage(const RuntimeUiMessage &message)
         setPowerSelectionUI(message.value);
         break;
     case RuntimeUiMessageType::EnterSleep:
-        goToSleep(static_cast<int8_t>(message.value));
+    {
+        const int8_t style = static_cast<int8_t>(message.value);
+        goToSleep(style);
+        if (style == SleepStyle::ESP_SLEEP_LIGHT)
+            resetMenuNavigation();
         break;
+    }
     }
 }
 

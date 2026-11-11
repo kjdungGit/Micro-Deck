@@ -61,6 +61,18 @@ public:
 
     static App *createApp_Object(byte id, String name, App_Type type = Utility, REFRESH refresh = REFRESH_SLOW)
     {
+        if (id == APP_ID_DEFAULT && apps.find(APP_ID_DEFAULT) != apps.end())
+        {
+            Serial.printf("\tSKIP: %s has no configured app ID\n", name.c_str());
+            return nullptr;
+        }
+
+        if (id != APP_ID_DEFAULT && apps.find(id) != apps.end())
+        {
+            Serial.printf("\tSKIP: %s duplicates app ID %u\n", name.c_str(), id);
+            return nullptr;
+        }
+
         apps[id] = new App(id, name, type, refresh);
         if (id == APP_ID_DEFAULT)
         {

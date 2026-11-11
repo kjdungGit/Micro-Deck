@@ -21,5 +21,6 @@ void buildMenuScreen(lv_obj_t *parent);
 void setMenu_TimeLabelInformation(DateTime time);
 
 void traverseMenu(unsigned int direction);
+void resetMenuNavigation();
 
 void initMainMenuButtons(Button *up, Button *down, Button *select);
