@@ -50,7 +50,6 @@ public:
 
     static App *getApp(byte id)
     {
-        Serial.printf("getting app with id: %x", id);
         auto it = apps.find(id);
         if (it != apps.end())
         {

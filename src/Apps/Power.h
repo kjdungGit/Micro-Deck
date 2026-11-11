@@ -53,7 +53,8 @@ void buildSelectionLabel()
     lv_style_set_text_color(&powerLabelStyle, lv_color_white()); 
 
     lv_obj_set_size(lv_selection_label, 50, 16);
-    lv_obj_set_pos(lv_selection_label,64-25, 20);
+    lv_obj_set_pos(lv_selection_label,64-25 - lv_obj_get_style_pad_right(lv_power_screen,LV_PART_MAIN), -20);
+    lv_label_set_text(lv_selection_label, "Return");
 
     lv_obj_add_style(lv_selection_label, &powerLabelStyle, LV_PART_MAIN);
 }
@@ -73,8 +74,8 @@ void buildMenu(lv_obj_t *parent)
     lv_style_set_bg_color(&powerScreenStyle, lv_color_black());
     lv_style_set_radius(&powerScreenStyle, 0);
     lv_style_set_border_width(&powerScreenStyle, 0);
-    lv_style_set_pad_hor(&powerScreenStyle, 20);
-    lv_style_set_pad_ver(&powerScreenStyle, 50);
+    lv_style_set_pad_hor(&powerScreenStyle, 26);
+    lv_style_set_pad_ver(&powerScreenStyle, 30);
     lv_obj_add_style(lv_power_screen, &powerScreenStyle, LV_PART_MAIN);
 
     lv_style_init(&powerButtonMainStyle);
@@ -82,11 +83,11 @@ void buildMenu(lv_obj_t *parent)
     lv_style_set_bg_color(&powerButtonMainStyle, lv_color_black());
     lv_style_set_border_color(&powerButtonMainStyle, lv_color_white());
     lv_style_set_border_width(&powerButtonMainStyle, 1);
-    lv_style_set_radius(&powerButtonMainStyle, 2);
+    lv_style_set_radius(&powerButtonMainStyle, 3);
 
     lv_style_init(&powerButtonSelectStyle);
     lv_style_copy(&powerButtonSelectStyle, &powerButtonMainStyle);
-    lv_style_set_border_width(&powerButtonSelectStyle, 3);
+    lv_style_set_border_width(&powerButtonSelectStyle, 2);
     lv_style_set_radius(&powerButtonSelectStyle, 4);
 
     lv_sleep_power = lv_image_create(lv_power_screen);
@@ -113,7 +114,7 @@ void closePowerMenu()
         lv_obj_clear_flag(lv_menu_screen, LV_OBJ_FLAG_HIDDEN);
     if (powerDaemon != nullptr)
         powerDaemon->enabled = false;
-    initMainMenuButtons(buttonK2, buttonK3, buttonK4);
+    initMainMenuButtons(buttonK3, buttonK2, buttonK4);
     setMainMenuActive(true);
 }
 
@@ -211,7 +212,7 @@ void Power_exec()
     lv_obj_set_state(lv_return_power, LV_STATE_HOVERED, true);
     lv_obj_set_state(lv_sleep_power, LV_STATE_HOVERED, false);
     lv_obj_set_state(lv_shut_power, LV_STATE_HOVERED, false);
-    assignButtons(*buttonK2, *buttonK3, *buttonK4);
+    assignButtons(*buttonK3, *buttonK2, *buttonK4);
     Serial.println("[Power] Main menu hidden and power buttons assigned");
 
     if (powerDaemon == nullptr)

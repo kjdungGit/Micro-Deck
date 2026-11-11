@@ -1,6 +1,16 @@
 {
     "stm32cube-ide-clangd.enable": false,
-    "C_Cpp.intelliSenseEngine": "Default",
+    "C_Cpp.intelliSenseEngine": "default",
     "C_Cpp.default.configurationProvider": "platformio.platformio-ide",
-    "C_Cpp.default.intelliSenseMode": "gcc-x64"
+    "C_Cpp.default.intelliSenseMode": "gcc-x64",
+    "C_Cpp.files.exclude": {
+        "**/.pio/**": true
+    },
+    "C_Cpp.workspaceParsingPriority": "low",
+    "files.watcherExclude": {
+        "**/.pio/**": true
+    },
+    "search.exclude": {
+        "**/.pio/**": true
+    }
 }

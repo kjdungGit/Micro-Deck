@@ -7,6 +7,8 @@
 #include "display.h"
 #include "nvs.h"
 
+uint32_t serialReadTime = 0;
+
 ulong App::programRunTime = 0;
 std::map<byte, App *> App::apps;
 App *App::activeApp = nullptr;
@@ -49,7 +51,7 @@ int requestTimeFromPC()
 
     unsigned long start = millis();
 
-    while (!Serial.available() && millis() - start < 5000)
+    while (!Serial.available() && millis() - start < 10000)
     {
         delay(100);
     }

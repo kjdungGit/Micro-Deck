@@ -23,9 +23,9 @@ void my_log_cb(lv_log_level_t level, const char *buf)
   Serial.println(buf);
 }
 
-LoopDaemon *buttonManagerDaemon = daemonManager.add("Button_Update",10, [&](){buttonManager.updateButtons();});
+LoopDaemon *buttonManagerDaemon = daemonManager.add("Button_Update",10, [](){buttonManager.updateButtons();});
 
-LoopDaemon *graphicsRenderDaemon = daemonManager.add("Graphics Manager",1000 / 30, [&]()
+LoopDaemon *graphicsRenderDaemon = daemonManager.add("Graphics Manager",1000 / 30, []()
 {
   if(mainMenuActive)
     setMenu_TimeLabelInformation(getNow());
@@ -60,7 +60,7 @@ void setup()
   lv_obj_add_flag(lv_header, LV_OBJ_FLAG_HIDDEN);
   lv_log_register_print_cb(my_log_cb);
   Serial.println("SetupFinished");
-  initMainMenuButtons(buttonManager.getButton(K2_PIN), buttonManager.getButton(K3_PIN), buttonManager.getButton(K4_PIN));
+  initMainMenuButtons(buttonManager.getButton(K3_PIN), buttonManager.getButton(K2_PIN), buttonManager.getButton(K4_PIN));
   buttonManager.buttonsEnabled = true;
   buttonManagerDaemon->enabled = true;
 }
