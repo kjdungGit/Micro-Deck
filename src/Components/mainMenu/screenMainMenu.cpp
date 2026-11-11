@@ -188,7 +188,7 @@ void traverseMenu(unsigned int direction)
 
         App *selectedApp = App::getApp(App::getAppIDatIndex(currentAppSelection));
         Serial.printf("Launching app: %s\n", selectedApp->getName().c_str());
-        selectedApp->launchApp();
+        App::openApp(static_cast<byte>(selectedApp->getID()));
         break;
 
     }//In the case of a default statement, nothing happens, but the function continues for the case that we want to refresh the menu without a direction change.

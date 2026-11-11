@@ -1,6 +1,7 @@
 #pragma once
 #include "Global.h"
-#include <functional>
+#include "app_ids.h"
+#include "runtime.h"
 #include <map>
 #include <vector>
 
@@ -29,8 +30,6 @@ private:
     static ulong programRunTime;
     static std::map<byte, App *> apps;
     static App *activeApp;
-    std::function<void()> program_exec;
-    std::function<void()> program_close;
 
     App(byte id, String name, App_Type type = Utility, REFRESH refresh = REFRESH_FAST) : id(id), name(name), type(type), refreshSpeed(refresh)
     {
@@ -45,7 +44,7 @@ public:
 
     static byte getAppIDatIndex(int index)
     {
-            return index > -1 && index < ID_List.size() ? ID_List.at(index) : 0xFF;
+            return index > -1 && index < ID_List.size() ? ID_List.at(index) : APP_ID_DEFAULT;
     }
 
     static App *getApp(byte id)
@@ -57,13 +56,13 @@ public:
             return it->second; // one lookup, reused
         }
         Serial.println("-");
-        return apps.at(0xFF);
+        return apps.at(APP_ID_DEFAULT);
     }
 
     static App *createApp_Object(byte id, String name, App_Type type = Utility, REFRESH refresh = REFRESH_SLOW)
     {
         apps[id] = new App(id, name, type, refresh);
-        if (id == 0xFF)
+        if (id == APP_ID_DEFAULT)
         {
             Serial.printf("\tDEF: %s\n", name.c_str());
             return nullptr;
@@ -77,47 +76,52 @@ public:
         return apps[id];
     }
 
-    void setProgramExec(std::function<void()> exec)
-    {
-        Serial.printf("[App] Registering program exec for '%s': %s\n", name.c_str(), exec ? "set" : "empty");
-        program_exec = exec;
-    }
-
-    void setProgramClose(std::function<void()> close)
-    {
-        Serial.printf("[App] Registering program close for '%s': %s\n", name.c_str(), close ? "set" : "empty");
-        program_close = close;
-    }
-
-    void closeApp()
-    {
-        Serial.printf("[App] Close requested: '%s'\n", name.c_str());
-        if (program_close)
-            program_close();
-    }
-
     static void closeActiveApp()
     {
-        if (activeApp != nullptr)
-            activeApp->closeApp();
+        if (!enqueueActiveAppClose())
+            Serial.println("[App] No active app could be closed");
     }
 
-    void launchApp()
+    static void openApp(byte id)
     {
-        Serial.printf("[App] Launch requested: '%s'\n", name.c_str());
-        if (!program_exec)
+        Serial.printf("[App] Open requested: id=%u\n", id);
+        if (!enqueueAppOpen(id))
+            Serial.printf("[App] Failed to queue app id %u\n", id);
+    }
+
+    static void executeApp(byte id)
+    {
+        auto it = apps.find(id);
+        if (it == apps.end())
         {
-            Serial.printf("[App] No program exec registered for '%s'\n", name.c_str());
+            Serial.printf("[App] Unknown app id %u\n", id);
+            finishAppExecution(id);
             return;
         }
-        activeApp = this;
-        Serial.printf("[App] Executing program: '%s'\n", name.c_str());
-        program_exec();
-        Serial.printf("[App] Program returned: '%s'\n", name.c_str());
+
+        activeApp = it->second;
+        setMainMenuActive(false);
+        Serial.printf("[App] Active app is '%s'\n", activeApp->name.c_str());
+        if (!postRuntimeUiMessage(RuntimeUiMessageType::OpenApp, id))
+        {
+            activeApp = nullptr;
+            setMainMenuActive(true);
+            finishAppExecution(id);
+        }
+    }
+
+    static void executeClose()
+    {
+        if (activeApp == nullptr)
+        {
+            Serial.println("[App] Close request ignored; no active app");
+            return;
+        }
+
+        const byte closingAppId = activeApp->id;
+        activeApp = nullptr;
+        setMainMenuActive(true);
+        finishAppExecution(closingAppId);
+        postRuntimeUiMessage(RuntimeUiMessageType::CloseActiveApp, closingAppId);
     }
 };
-
-inline void setMainMenuActive(bool state)
-{
-    mainMenuActive = state;
-}

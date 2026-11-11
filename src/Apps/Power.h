@@ -1,6 +1,6 @@
 #pragma once
 #include "Global.h"
-#include "daemon.h"
+#include "runtime.h"
 #include "buttons.h"
 #include "sleep.h"
 #include "Components/mainMenu/screenMainMenu.h"
@@ -8,8 +8,6 @@
 #include "Image_Assets/Power/Power_Shut.h"
 #include "Image_Assets/Power/Power_Return.h"
 #include "App.h"
-
-bool enabled;
 
 enum class PowerMenuDirections
 {
@@ -31,7 +29,6 @@ lv_style_t powerButtonSelectStyle;
 lv_style_t powerLabelStyle;
 
 byte selection;
-LoopDaemon *powerDaemon = nullptr;
 
 void buildPowerbutton(lv_obj_t *obj)
 {
@@ -105,57 +102,27 @@ void buildMenu(lv_obj_t *parent)
     buildSelectionLabel();
 }
 
-void closePowerMenu()
+void restoreMainScreenUI()
 {
-    enabled = false;
+    configASSERT(isRuntimeUiTask());
     if (lv_power_screen != nullptr)
         lv_obj_add_flag(lv_power_screen, LV_OBJ_FLAG_HIDDEN);
     if (lv_menu_screen != nullptr)
         lv_obj_clear_flag(lv_menu_screen, LV_OBJ_FLAG_HIDDEN);
-    if (powerDaemon != nullptr)
-        powerDaemon->enabled = false;
     initMainMenuButtons(buttonK3, buttonK2, buttonK4);
     setMainMenuActive(true);
 }
 
-void traversePowerMenu(int direction)
+void setPowerSelectionUI(uint8_t currentSelection)
 {
-    Serial.printf("[Power] Menu input direction=%d selection=%u enabled=%s\n",
-                  direction, selection, enabled ? "true" : "false");
-    if (!direction)
-    {
-        switch (selection)
-        {
-        case 0:
-            Serial.println("[Power] Return selected");
-            App::closeActiveApp();
-            break;
-        case 1:
-            Serial.println("[Power] Light sleep selected");
-            App::closeActiveApp();
-            goToSleep(SleepStyle::ESP_SLEEP_LIGHT);
-            break;
-        case 2:
-            Serial.println("[Power] Deep sleep selected");
-            App::closeActiveApp();
-            goToSleep(SleepStyle::ESP_SLEEP_DEEP);
-            break;
-        }
-        return;
-    }
-    int transform = direction + 3; // make sure a buffer is in place so unsigned arithmetic doesn't break modulus operation
-    selection = ((int8_t)selection + transform) % 3;
-    Serial.printf("[Power] Selection changed to %u\n", selection);
-
+    configASSERT(isRuntimeUiTask());
     lv_obj_t *buttons[] = {lv_return_power, lv_sleep_power, lv_shut_power};
     for (int i = 0; i < 3; i++)
     {
-        lv_obj_set_state(buttons[i], LV_STATE_HOVERED, selection == i);
-        lv_obj_set_state(buttons[i], LV_STATE_DEFAULT, selection != i);
+        lv_obj_set_state(buttons[i], LV_STATE_HOVERED, currentSelection == i);
+        lv_obj_set_state(buttons[i], LV_STATE_DEFAULT, currentSelection != i);
     }
-
-
-    switch (selection)
+    switch (currentSelection)
     {
     case 0:
         lv_label_set_text(lv_selection_label, "Return");
@@ -167,6 +134,37 @@ void traversePowerMenu(int direction)
         lv_label_set_text(lv_selection_label, "Power Off");
         break;
     }
+}
+
+void resetPowerMenuState()
+{
+    selection = 0;
+}
+
+void processPowerMenuInput(int8_t direction)
+{
+    Serial.printf("[Power] Input direction=%d selection=%u\n", direction, selection);
+    if (direction == 0)
+    {
+        switch (selection)
+        {
+        case 0:
+            App::closeActiveApp();
+            break;
+        case 1:
+        case 2:
+            App::closeActiveApp();
+            postRuntimeUiMessage(
+                RuntimeUiMessageType::EnterSleep,
+                static_cast<uint8_t>(selection == 1 ? SleepStyle::ESP_SLEEP_LIGHT : SleepStyle::ESP_SLEEP_DEEP));
+            break;
+        }
+        return;
+    }
+
+    selection = static_cast<uint8_t>((static_cast<int>(selection) + direction + 3) % 3);
+    Serial.printf("[Power] Selection changed to %u\n", selection);
+    postRuntimeUiMessage(RuntimeUiMessageType::UpdatePowerSelection, selection);
 }
 
 void clearButtons(Button **objs, int count)
@@ -186,19 +184,17 @@ void assignButtons(Button &left, Button &right, Button &select)
     clearButtons(buttons, 3);
 
     left.pressedFunction = []()
-    { traversePowerMenu(static_cast<int>(PowerMenuDirections::LEFT)); };
+    { postAppInput(static_cast<int8_t>(PowerMenuDirections::LEFT)); };
     right.pressedFunction = []()
-    { traversePowerMenu(static_cast<int>(PowerMenuDirections::RIGHT)); };
+    { postAppInput(static_cast<int8_t>(PowerMenuDirections::RIGHT)); };
     select.pressedFunction = []()
-    { traversePowerMenu(static_cast<int>(PowerMenuDirections::SELECT)); };
+    { postAppInput(static_cast<int8_t>(PowerMenuDirections::SELECT)); };
 }
 
-void Power_exec()
+void activatePowerScreenUI()
 {
-    Serial.printf("[Power] Exec begin enabled=%s screen=%p daemon=%p\n",
-                  enabled ? "true" : "false", lv_power_screen, powerDaemon);
-    enabled = true;
-    setMainMenuActive(false);
+    configASSERT(isRuntimeUiTask());
+    Serial.printf("[Power] Opening screen=%p\n", lv_power_screen);
     if (lv_power_screen == nullptr)
         buildMenu(lv_scr_act());
     else
@@ -208,32 +204,7 @@ void Power_exec()
     }
 
     lv_obj_add_flag(lv_menu_screen, LV_OBJ_FLAG_HIDDEN);
-    selection = 0;
-    lv_obj_set_state(lv_return_power, LV_STATE_HOVERED, true);
-    lv_obj_set_state(lv_sleep_power, LV_STATE_HOVERED, false);
-    lv_obj_set_state(lv_shut_power, LV_STATE_HOVERED, false);
+    setPowerSelectionUI(0);
     assignButtons(*buttonK3, *buttonK2, *buttonK4);
     Serial.println("[Power] Main menu hidden and power buttons assigned");
-
-    if (powerDaemon == nullptr)
-    {
-        Serial.println("[Power] Creating power daemon");
-        powerDaemon = daemonManager.add("PowerDisplay", 30, []()
-                                        {
-        static bool lastEnabled = false;
-        if (enabled != lastEnabled)
-        {
-            Serial.printf("[Power] Daemon state changed: enabled=%s\n", enabled ? "true" : "false");
-            lastEnabled = enabled;
-        }
-        if(!enabled){
-            Serial.println("[Power] Daemon restoring main menu");
-            setMainMenuActive(true);
-            if (powerDaemon != nullptr)
-                powerDaemon->enabled = false;
-        } });
-    }
-    powerDaemon->enabled = true;
-    Serial.printf("[Power] Exec complete daemon=%p enabled=%s\n",
-                  powerDaemon, powerDaemon->enabled ? "true" : "false");
 }

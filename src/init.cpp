@@ -6,6 +6,8 @@
 #include "clock.h"
 #include "display.h"
 #include "nvs.h"
+#include "Components/components.h"
+#include "Components/mainMenu/screenMainMenu.h"
 
 uint32_t serialReadTime = 0;
 
@@ -90,6 +92,11 @@ void setupLVGL()
     lv_display_set_flush_cb(disp, pushToOled);
 }
 
+void lvglLogCallback(lv_log_level_t level, const char *buf)
+{
+    Serial.println(buf);
+}
+
 void setupRTC()
 {
 
@@ -145,13 +152,10 @@ void setupNVS(bool fresh)
 void setupApps()
 {
     // App *App_RAMCPUVISUALIZER = App::createApp_Object(0x0001,"CPU SRAM Visualizer", Utility, REFRESH_SLOW);
-    App::createApp_Object(0xFF, "ZERO", Utility, REFRESH_SLOW);
-    App::createApp_Object(0x01, "P 1", Utility, REFRESH_SLOW);
-    App::createApp_Object(0x02, "P 2", Utility, REFRESH_SLOW);
-    App *Power = App::createApp_Object(0xF3, "Power", Service, REFRESH_MEDIUM);
-    Serial.println("[App] Registering Power program exec");
-    Power->setProgramExec([] { Power_exec(); });
-    Power->setProgramClose([] { closePowerMenu(); });
+    App::createApp_Object(APP_ID_DEFAULT, "ZERO", Utility, REFRESH_SLOW);
+    App::createApp_Object(APP_ID_P1, "P 1", Utility, REFRESH_SLOW);
+    App::createApp_Object(APP_ID_P2, "P 2", Utility, REFRESH_SLOW);
+    App::createApp_Object(APP_ID_POWER, "Power", Service, REFRESH_MEDIUM);
 
     Serial.printf("\tApps initialized {%d}:\n", App::AppCount);
     for (byte app : App::ID_List)
@@ -162,10 +166,23 @@ void setupApps()
 
 void init(bool fresh)
 {
-    setupDisplay();
-    setupLVGL();
     setupNVS(fresh);
     setupRTC();
     setupButtons();
     setupApps();
+}
+
+void setupUI()
+{
+    configASSERT(isRuntimeUiTask());
+    setupDisplay();
+    setupLVGL();
+    lv_log_register_print_cb(lvglLogCallback);
+    buildBlankHeader(lv_scr_act());
+    buildHeaderTimeLabel(lv_header);
+    buildHeaderBootLabel(lv_header);
+    buildMenuScreen(lv_scr_act());
+    setBoot(preferences.getInt("free_boot_count"));
+    lv_obj_add_flag(lv_header, LV_OBJ_FLAG_HIDDEN);
+    initMainMenuButtons(buttonManager.getButton(K3_PIN), buttonManager.getButton(K2_PIN), buttonManager.getButton(K4_PIN));
 }

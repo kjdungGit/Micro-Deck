@@ -1,11 +1,12 @@
 #include "display.h"
+#include "runtime.h"
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 lv_color_t buf1[(128 * 10) / 8 + 8];
 lv_display_t *disp;
-long millisSinceGraphicsRefresh = 0;
 
 void setDisplayBrightnessPercent(uint8_t percent) {
+    configASSERT(isRuntimeUiTask());
     // Constrain input between 0 and 100
     percent = constrain(percent, 0, 100);
 
@@ -30,6 +31,7 @@ void setDisplayBrightnessPercent(uint8_t percent) {
 
 void setupDisplay()
 {
+    configASSERT(isRuntimeUiTask());
 
     if (!display.begin(SSD1306_EXTERNALVCC, SSD1309_I2C_ADDR)) {
         Serial.println("Failed to Grab display");
@@ -43,6 +45,7 @@ void setupDisplay()
 
 void pushToOled(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
+    configASSERT(isRuntimeUiTask());
     // Skip the 8-byte palette header for I1 format
     px_map += 8;
 

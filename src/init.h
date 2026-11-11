@@ -7,6 +7,7 @@ extern bool needsDataRefresh;
 int requestTimeFromPC();
 
 void setupLVGL();
+void setupUI();
 void setupRTC();
 void setupNVS(bool freshUpload);
 void setupButtons();

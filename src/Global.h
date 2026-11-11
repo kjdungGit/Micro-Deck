@@ -11,7 +11,3 @@
 
 #define SDA_PIN D4
 #define SCL_PIN D5
-
-extern bool mainMenuActive;
-
-extern long millisSinceGraphicsRefresh;

@@ -2,10 +2,12 @@
 #include "display.h"
 #include "main.h"
 #include "nvs.h"
+#include "runtime.h"
 #include <esp_sleep.h>
 
 void goToSleep(int style)
 {
+  configASSERT(isRuntimeUiTask());
   Serial.println("Sleeping..." + String(style == ESP_SLEEP_DEEP ? "DEEP SLEEP" : "LIGHT SLEEP"));
   Serial.flush();
   

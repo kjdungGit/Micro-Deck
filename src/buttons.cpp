@@ -1,4 +1,5 @@
 #include "buttons.h"
+#include "runtime.h"
 
 Button* buttonK1;
 Button* buttonK2;
@@ -14,7 +15,7 @@ Button::Button(uint8_t b_pin, int b_input_type) : pin(b_pin), inputType(b_input_
 Button::Button() {}
 
 bool Button::isDown() const{
-    return down;
+    return down.load();
 }
 
 void Button::buttonDown()
@@ -43,22 +44,27 @@ Button *ButtonController::createButton(uint8_t b_pin, int b_input_type)
 
 void ButtonController::updateButtons()
 {
-    if(!buttonsEnabled) return;
+    if(!buttonsEnabled.load()) return;
     
     for (int i = 0; i < buttonCount; i++)
     {
         Button *b = buttons[i];
-        b->down = digitalRead(b->pin) ^ 1;
+        const bool down = (digitalRead(b->pin) ^ 1) != 0;
+        b->down.store(down);
 
-        if (b->last_down && !b->down)
+        if (b->last_down && !down)
         {
-            b->buttonReleased();
+            postButtonEvent(b->pin, false);
         }
-        else if (!b->last_down && b->down)
+        else if (!b->last_down && down)
         {
-            b->buttonPressed();
+            postButtonEvent(b->pin, true);
         }
-        b->last_down = b->down;
+        else if (down)
+        {
+            postButtonDownEvent(b->pin);
+        }
+        b->last_down = down;
     }
 }
 Button *ButtonController::getButton(u_int8_t pin)

@@ -1,5 +1,6 @@
 #pragma once
 #include "Global.h"
+#include <atomic>
 
 class Button;
 extern Button* buttonK1;
@@ -15,7 +16,7 @@ class Button
 {
 private:
     bool last_down = false;
-    bool down = false;
+    std::atomic<bool> down{false};
     uint8_t pin;
     int inputType;
     friend class ButtonController;
@@ -42,6 +43,6 @@ public:
     ButtonController();
     Button *createButton(uint8_t b_pin, int b_input_type);
     Button *getButton(uint8_t b_pin);
-    bool buttonsEnabled = false;
+    std::atomic<bool> buttonsEnabled{false};
     void updateButtons();
 };
