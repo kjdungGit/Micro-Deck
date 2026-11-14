@@ -11,6 +11,8 @@
 
 uint32_t serialReadTime = 0;
 
+
+
 ulong App::programRunTime = 0;
 std::map<byte, App *> App::apps;
 App *App::activeApp = nullptr;
@@ -34,6 +36,8 @@ bool checkFreshFlash()
 
             // reset your boot counter here, since this is your build-flag trigger
             preferences.putUInt("bootCount", 0);
+
+            Serial.println("[Init] Firmware Boot Detected");
         }
         else
         {
@@ -41,13 +45,14 @@ bool checkFreshFlash()
         }
         checked = true;
     }
+    Serial.println(result);
+    Serial.println(checked);
     return result;
 }
 
 int requestTimeFromPC()
 {
-
-    delay(2000);
+    delay(3000);
 
     Serial.println("REQUEST_TIME");
 
@@ -110,11 +115,12 @@ void setupRTC()
     Serial.println("RTC found");
 #ifdef FLAG_FLASHNEWTIME
     {
-        Serial.println("setupRTC: new boot, setting RTC to Serial time");
+        Serial.println("setupRTC: FLASHNEWTIME Enabled");
 
-        RTC.adjust(preferences.getULong("unix_time", (uint32_t)(1)));
+        Serial.print("Fetching Time: ");
+        Serial.println(preferences.getULong("unix_time", (uint32_t)(0xFF)));
+        RTC.adjust(preferences.getULong("unix_time", (uint32_t)(0xFF)));
         DateTime now = RTC.now();
-        Serial.println(now.unixtime());
         Serial.printf("RTC now: %04d/%02d/%02d %02d:%02d:%02d\n",
                       now.year(), now.month(), now.day(),
                       now.hour(), now.minute(), now.second());
@@ -131,12 +137,15 @@ void setupNVS(bool fresh)
 {
     preferences.begin("microdeck", false);
     preferences.putInt("free_boot_count", preferences.getInt("free_boot_count", 0) + 1);
-    if (!checkFreshFlash())
+    if (!checkFreshFlash()){
+        // Serial.println("[Init] Non-firmware boot, running standard");
         return;
+    }
+
 #ifdef FLAG_FLASHNEWTIME
     serialReadTime = requestTimeFromPC();
 
-    Serial.print("Unix Time Variance Amount: ");
+    Serial.print("Unix Time Variance Amount:");
     Serial.println(serialReadTime - preferences.getULong("unix_time"));
     preferences.putULong("unix_time", serialReadTime);
 #endif
@@ -169,9 +178,9 @@ void setupBatteryPin(){
     pinMode(BAT_DIV_PIN, INPUT);
 }
 
-void init(bool fresh)
+void init(bool firmware)
 {
-    setupNVS(fresh);
+    setupNVS(firmware);
     setupRTC();
     setupButtons();
     setupApps();

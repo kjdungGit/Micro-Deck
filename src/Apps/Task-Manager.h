@@ -153,7 +153,7 @@ static void updateGraphs()
     {
         const uint32_t nvsPercent = static_cast<uint32_t>(
             (static_cast<uint64_t>(nvsStats.used_entries) * 100U) / nvsStats.total_entries);
-        lv_label_set_text_fmt(taskManagerNvsLabel, "%c %d%%", 'NVS', static_cast<int>(nvsPercent));
+        lv_label_set_text_fmt(taskManagerNvsLabel, "%s %d%%", "NVS", static_cast<int>(nvsPercent));
     }
     else
     {

@@ -24,7 +24,7 @@ void setup()
   }
 
   init(esp_sleep_get_gpio_wakeup_status() == ESP_SLEEP_WAKEUP_UNDEFINED);
-  delay(100);
+  delay(1000);
 
   if (!startRuntimeTasks())
   {
