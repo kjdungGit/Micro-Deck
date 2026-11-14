@@ -132,6 +132,9 @@ void dispatchUiMessage(const RuntimeUiMessage &message)
     case RuntimeUiMessageType::UpdateTaskManagerGraphs:
         updateGraphs();
         break;
+    case RuntimeUiMessageType::NavigateTaskManager:
+        navigateTaskManagerScreens(static_cast<int8_t>(message.value));
+        break;
     case RuntimeUiMessageType::EnterSleep:
     {
         const int8_t style = static_cast<int8_t>(message.value);
@@ -230,6 +233,8 @@ void appTask(void *)
             App::executeClose();
         else if (message.appId == targetAppId.load() && message.appId == APP_ID_POWER)
             processPowerMenuInput(static_cast<int8_t>(message.value));
+        else if (message.appId == targetAppId.load() && message.appId == APP_ID_TSKMNGR)
+            processTaskManagerInput(static_cast<int8_t>(message.value));
     }
 }
 

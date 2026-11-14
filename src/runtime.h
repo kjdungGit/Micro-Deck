@@ -32,6 +32,8 @@ enum class RuntimeUiMessageType : uint8_t
     UpdatePowerSelection,
     /** Refresh Task Manager resource charts. */
     UpdateTaskManagerGraphs,
+    /** Navigate between Task Manager screens. */
+    NavigateTaskManager,
     /** Transition the device into sleep mode. */
     EnterSleep
 };
