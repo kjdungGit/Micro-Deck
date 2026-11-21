@@ -20,6 +20,8 @@ lv_obj_t *lv_app_select_labels[3];
 lv_style_t menuAppSelectLabelStyles[3];
 
 int currentAppSelection = 0;
+int appWindowStart = 0;
+int currentSelectionRow = 0;
 
 bool showBorders = 0;
 
@@ -178,53 +180,93 @@ void traverseMenu(unsigned int direction)
     if (App::AppCount == 0)
     {
         currentAppSelection = 0;
+        appWindowStart = 0;
+        currentSelectionRow = 0;
         for (lv_obj_t *label : lv_app_select_labels)
             lv_label_set_text(label, "NO APPS");
         return;
     }
 
-    Serial.println(currentAppSelection);
+    bool refreshWindow = false;
 
     switch (direction)
     {
     case MenuDirections::UP:
-        currentAppSelection--;
+        currentSelectionRow--;
+        if (currentSelectionRow < 0)
+        {
+            currentSelectionRow += 3;
+            appWindowStart = (appWindowStart + App::AppCount - (3 % App::AppCount)) % App::AppCount;
+            refreshWindow = true;
+        }
+        currentAppSelection = (appWindowStart + currentSelectionRow) % App::AppCount;
         break;
 
     case MenuDirections::DOWN:
-        currentAppSelection++;
+        currentSelectionRow++;
+        if (currentSelectionRow > 2)
+        {
+            currentSelectionRow -= 3;
+            appWindowStart = (appWindowStart + 3) % App::AppCount;
+            refreshWindow = true;
+        }
+        currentAppSelection = (appWindowStart + currentSelectionRow) % App::AppCount;
         break;
 
     case MenuDirections::SELECT:
-
+    {
         App *selectedApp = App::getApp(App::getAppIDatIndex(currentAppSelection));
         Serial.printf("Launching app: %s\n", selectedApp->getName().c_str());
         App::openApp(static_cast<byte>(selectedApp->getID()));
+        return;
+    }
+
+    default:
+        refreshWindow = true;
         break;
+    }
 
-    }//In the case of a default statement, nothing happens, but the function continues for the case that we want to refresh the menu without a direction change.
-
-    currentAppSelection = (currentAppSelection + App::AppCount) % App::AppCount; // wrap
-
-    for (int i = -1; i < 2; i++)
+    if (refreshWindow)
     {
-        int index_of_target = ((currentAppSelection + i) + App::AppCount) % App::AppCount;
+        for (int row = 0; row < 3; row++)
+        {
+            const int appIndex = (appWindowStart + row) % App::AppCount;
+            try
+            {
+                lv_label_set_text(
+                    lv_app_select_labels[row],
+                    App::getApp(App::getAppIDatIndex(appIndex))->getName().c_str());
+            }
+            catch (const std::out_of_range &e)
+            {
+                lv_label_set_text(lv_app_select_labels[row], "APP");
+            }
+        }
+    }
 
-        try
-        {
-            Serial.printf("Setting label %d to app index %d\n", i + 1, index_of_target);
-            lv_label_set_text(lv_app_select_labels[i + 1], App::getApp(App::getAppIDatIndex(index_of_target))->getName().c_str());
-        }
-        catch (const std::out_of_range &e)
-        {
-            lv_label_set_text(lv_app_select_labels[i + 1], "APP");
-        }
+    for (int row = 0; row < 3; row++)
+    {
+        const bool selected = row == currentSelectionRow;
+        lv_obj_set_style_bg_opa(
+            lv_app_select_labels[row],
+            selected ? LV_OPA_COVER : LV_OPA_TRANSP,
+            LV_PART_MAIN);
+        lv_obj_set_style_bg_color(
+            lv_app_select_labels[row],
+            selected ? lv_color_white() : lv_color_black(),
+            LV_PART_MAIN);
+        lv_obj_set_style_text_color(
+            lv_app_select_labels[row],
+            selected ? lv_color_black() : lv_color_white(),
+            LV_PART_MAIN);
     }
 }
 
 void resetMenuNavigation()
 {
     currentAppSelection = 0;
+    appWindowStart = 0;
+    currentSelectionRow = 0;
     traverseMenu(0);
 }
 
