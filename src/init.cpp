@@ -166,6 +166,7 @@ void setupApps()
     App::createApp_Object(APP_ID_P2, "P 2", Utility, REFRESH_SLOW);
     App::createApp_Object(APP_ID_POWER, "Power", Service, REFRESH_MEDIUM);
     App::createApp_Object(APP_ID_TSKMNGR, "Task Manager", Service, REFRESH_MEDIUM);
+    App::createApp_Object(APP_ID_GUITAR_HERO, "Guitar Hero", Game, REFRESH_FAST);
 
     Serial.printf("\tApps initialized {%d}:\n", App::AppCount);
     for (byte app : App::ID_List)

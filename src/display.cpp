@@ -50,6 +50,7 @@ void pushToOled(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
     px_map += 8;
 
     int32_t w = lv_area_get_width(area);
+    const lv_display_rotation_t rotation = lv_display_get_rotation(disp);
 
     for (int32_t y = area->y1; y <= area->y2; y++) {
         for (int32_t x = area->x1; x <= area->x2; x++) {
@@ -61,7 +62,26 @@ void pushToOled(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 
             bool pixel_on = (px_map[byte_index] >> bit_index) & 0x01;
 
-            display.drawPixel(x, y, pixel_on ? SSD1306_WHITE : SSD1306_BLACK);
+            int32_t display_x = x;
+            int32_t display_y = y;
+            switch (rotation) {
+                case LV_DISPLAY_ROTATION_90:
+                    display_x = y;
+                    display_y = SCREEN_HEIGHT - 1 - x;
+                    break;
+                case LV_DISPLAY_ROTATION_180:
+                    display_x = SCREEN_WIDTH - 1 - x;
+                    display_y = SCREEN_HEIGHT - 1 - y;
+                    break;
+                case LV_DISPLAY_ROTATION_270:
+                    display_x = SCREEN_WIDTH - 1 - y;
+                    display_y = x;
+                    break;
+                default:
+                    break;
+            }
+
+            display.drawPixel(display_x, display_y, pixel_on ? SSD1306_WHITE : SSD1306_BLACK);
         }
     }
 

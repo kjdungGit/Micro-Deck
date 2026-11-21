@@ -45,13 +45,19 @@ Button *ButtonController::createButton(uint8_t b_pin, int b_input_type)
 void ButtonController::updateButtons()
 {
     if(!buttonsEnabled.load()) return;
-    
+
+    bool currentDown[4];
     for (int i = 0; i < buttonCount; i++)
     {
         Button *b = buttons[i];
-        const bool down = (digitalRead(b->pin) ^ 1) != 0;
-        b->down.store(down);
+        currentDown[i] = (digitalRead(b->pin) ^ 1) != 0;
+        b->down.store(currentDown[i]);
+    }
 
+    for (int i = 0; i < buttonCount; i++)
+    {
+        Button *b = buttons[i];
+        const bool down = currentDown[i];
         if (b->last_down && !down)
         {
             postButtonEvent(b->pin, false);

@@ -21,3 +21,7 @@
 #ifndef APP_ID_TSKMNGR
 #define APP_ID_TSKMNGR APP_ID_DEFAULT
 #endif
+
+#ifndef APP_ID_GUITAR_HERO
+#define APP_ID_GUITAR_HERO APP_ID_DEFAULT
+#endif

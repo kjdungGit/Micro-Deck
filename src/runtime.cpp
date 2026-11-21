@@ -4,6 +4,7 @@
 #include <freertos/semphr.h>
 
 #include "Apps/App.h"
+#include "Apps/Guitar-Hero.h"
 #include "Apps/Task-Manager.h"
 #include "battery.h"
 #include "buttons.h"
@@ -114,6 +115,11 @@ void dispatchUiMessage(const RuntimeUiMessage &message)
             activatePowerScreenUI();
         else if (message.value == APP_ID_TSKMNGR)
             activateTaskManagerUI();
+        else if (message.value == APP_ID_GUITAR_HERO)
+        {
+            if (!activateGuitarHeroUI())
+                App::closeActiveApp();
+        }
         else
         {
             Serial.printf("[Runtime] No UI registered for app id %u\n", message.value);
@@ -125,6 +131,8 @@ void dispatchUiMessage(const RuntimeUiMessage &message)
             restoreMainScreenUI();
         else if (message.value == APP_ID_TSKMNGR)
             restoreTaskManagerUI();
+        else if (message.value == APP_ID_GUITAR_HERO)
+            restoreGuitarHeroUI();
         break;
     case RuntimeUiMessageType::UpdatePowerSelection:
         setPowerSelectionUI(message.value);
