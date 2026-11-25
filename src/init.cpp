@@ -160,13 +160,11 @@ void setupNVS(bool fresh)
 
 void setupApps()
 {
-    // App *App_RAMCPUVISUALIZER = App::createApp_Object(0x0001,"CPU SRAM Visualizer", Utility, REFRESH_SLOW);
     App::createApp_Object(APP_ID_DEFAULT, "ZERO", Utility, REFRESH_SLOW);
-    App::createApp_Object(APP_ID_P1, "P 1", Utility, REFRESH_SLOW);
-    App::createApp_Object(APP_ID_P2, "P 2", Utility, REFRESH_SLOW);
-    App::createApp_Object(APP_ID_POWER, "Power", Service, REFRESH_MEDIUM);
-    App::createApp_Object(APP_ID_TSKMNGR, "Task Manager", Service, REFRESH_MEDIUM);
+    App::createApp_Object(APP_ID_POWER, "Power", Utility, REFRESH_MEDIUM);
+    App::createApp_Object(APP_ID_TSKMNGR, "Task Manager", Utility, REFRESH_MEDIUM);
     App::createApp_Object(APP_ID_GUITAR_HERO, "Guitar Hero", Game, REFRESH_FAST);
+    App::createApp_Object(APP_ID_WALLPAPER, "Wallpaper", Service, REFRESH_FAST);
 
     Serial.printf("\tApps initialized {%d}:\n", App::AppCount);
     for (byte app : App::ID_List)

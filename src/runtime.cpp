@@ -6,6 +6,7 @@
 #include "Apps/App.h"
 #include "Apps/Guitar-Hero.h"
 #include "Apps/Task-Manager.h"
+#include "Apps/Wallpaper.h"
 #include "battery.h"
 #include "buttons.h"
 #include "clock.h"
@@ -120,6 +121,11 @@ void dispatchUiMessage(const RuntimeUiMessage &message)
             if (!activateGuitarHeroUI())
                 App::closeActiveApp();
         }
+        else if (message.value == APP_ID_WALLPAPER)
+        {
+            if (!activateWallpaperUI())
+                App::closeActiveApp();
+        }
         else
         {
             Serial.printf("[Runtime] No UI registered for app id %u\n", message.value);
@@ -133,6 +139,8 @@ void dispatchUiMessage(const RuntimeUiMessage &message)
             restoreTaskManagerUI();
         else if (message.value == APP_ID_GUITAR_HERO)
             restoreGuitarHeroUI();
+        else if (message.value == APP_ID_WALLPAPER)
+            restoreWallpaperUI();
         break;
     case RuntimeUiMessageType::UpdatePowerSelection:
         setPowerSelectionUI(message.value);
@@ -142,6 +150,9 @@ void dispatchUiMessage(const RuntimeUiMessage &message)
         break;
     case RuntimeUiMessageType::NavigateTaskManager:
         navigateTaskManagerScreens(static_cast<int8_t>(message.value));
+        break;
+    case RuntimeUiMessageType::WallpaperInput:
+        processWallpaperUiInput(static_cast<int8_t>(message.value));
         break;
     case RuntimeUiMessageType::EnterSleep:
     {
@@ -243,6 +254,8 @@ void appTask(void *)
             processPowerMenuInput(static_cast<int8_t>(message.value));
         else if (message.appId == targetAppId.load() && message.appId == APP_ID_TSKMNGR)
             processTaskManagerInput(static_cast<int8_t>(message.value));
+        else if (message.appId == targetAppId.load() && message.appId == APP_ID_WALLPAPER)
+            processWallpaperInput(static_cast<int8_t>(message.value));
     }
 }
 

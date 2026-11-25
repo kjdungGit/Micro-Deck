@@ -34,6 +34,8 @@ enum class RuntimeUiMessageType : uint8_t
     UpdateTaskManagerGraphs,
     /** Navigate between Task Manager screens. */
     NavigateTaskManager,
+    /** Route wallpaper app button input to its UI. */
+    WallpaperInput,
     /** Transition the device into sleep mode. */
     EnterSleep
 };
