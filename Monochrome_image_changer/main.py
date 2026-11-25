@@ -76,6 +76,19 @@ def make_monochrome(
     return result
 
 
+def preview_size(
+    image_size: tuple[int, int], viewport_size: tuple[int, int]
+) -> tuple[int, int] | None:
+    """Scale an image to fit a preview viewport while preserving its aspect."""
+    image_width, image_height = image_size
+    viewport_width, viewport_height = viewport_size
+    if min(image_width, image_height, viewport_width, viewport_height) <= 0:
+        return None
+
+    scale = min(viewport_width / image_width, viewport_height / image_height)
+    return max(1, round(image_width * scale)), max(1, round(image_height * scale))
+
+
 def prompt_for_positive_integer(prompt: str) -> int:
     while True:
         value = input(prompt).strip()
@@ -137,13 +150,24 @@ def lvgl_asset_paths_for(
     return base.with_suffix(".c"), base.with_suffix(".h"), symbol
 
 
-def export_lvgl_argb8888(image: Image.Image, c_path: Path, symbol: str) -> Path:
-    """Write an LVGL ARGB8888 C image and its matching descriptor header."""
-    rgba = image.convert("RGBA")
-    width, height = rgba.size
+def export_lvgl_i1(image: Image.Image, c_path: Path, symbol: str) -> Path:
+    """Write an LVGL I1 C image and its matching descriptor header."""
+    monochrome = image.convert("L")
+    width, height = monochrome.size
+    stride = (width + 7) // 8
     c_path = c_path.with_suffix(".c")
     header_path = c_path.with_suffix(".h")
     attribute = f"LV_ATTRIBUTE_IMAGE_{symbol.upper()}"
+
+    pixel_bytes = bytearray()
+    for y in range(height):
+        for byte_x in range(stride):
+            packed = 0
+            for bit in range(8):
+                x = byte_x * 8 + bit
+                if x < width and monochrome.getpixel((x, y)) >= 128:
+                    packed |= 1 << (7 - bit)
+            pixel_bytes.append(packed)
 
     lines = [
         '#ifdef __has_include',
@@ -171,9 +195,9 @@ def export_lvgl_argb8888(image: Image.Image, c_path: Path, symbol: str) -> Path:
         '',
         f'const LV_ATTRIBUTE_MEM_ALIGN LV_ATTRIBUTE_LARGE_CONST {attribute} '
         f'uint8_t {symbol}_map[] = {{',
+        '  0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff,',
     ]
 
-    pixel_bytes = rgba.tobytes()
     for offset in range(0, len(pixel_bytes), 16):
         chunk = pixel_bytes[offset : offset + 16]
         lines.append('  ' + ', '.join(f'0x{value:02x}' for value in chunk) + ',')
@@ -182,11 +206,12 @@ def export_lvgl_argb8888(image: Image.Image, c_path: Path, symbol: str) -> Path:
             '};',
             '',
             f'const lv_image_dsc_t {symbol} = {{',
-            '  .header.cf = LV_COLOR_FORMAT_ARGB8888,',
+            '  .header.cf = LV_COLOR_FORMAT_I1,',
             '  .header.magic = LV_IMAGE_HEADER_MAGIC,',
+            f'  .header.stride = {stride},',
             f'  .header.w = {width},',
             f'  .header.h = {height},',
-            f'  .data_size = {width} * {height} * 4,',
+            f'  .data_size = sizeof({symbol}_map),',
             f'  .data = {symbol}_map,',
             '};',
             '',
@@ -223,7 +248,7 @@ def process_image(
         c_path, _header_path, symbol = lvgl_asset_paths_for(
             image_path, horizontal, vertical, target_width, target_height
         )
-        return export_lvgl_argb8888(result, c_path, symbol)
+        return export_lvgl_i1(result, c_path, symbol)
 
     output_path = output_path_for(
         image_path, horizontal, vertical, target_width, target_height
@@ -251,24 +276,49 @@ def edit_threshold(
 
     root = tk.Tk()
     root.title("Black-and-white threshold")
-    preview_label = tk.Label(root)
-    preview_label.pack(padx=12, pady=(12, 4))
+    root.geometry("900x700")
+    root.minsize(360, 320)
+
+    preview_canvas = tk.Canvas(root, background="#303030", highlightthickness=0)
+    preview_canvas.pack(fill=tk.BOTH, expand=True, padx=12, pady=(12, 4))
 
     threshold = tk.IntVar(value=128)
     invert = tk.BooleanVar(value=False)
     export_lvgl = tk.BooleanVar(value=False)
     saved_path: Path | None = None
+    preview_image: Image.Image | None = None
+
+    def render_preview(_event: tk.Event | None = None) -> None:
+        if preview_image is None:
+            return
+        canvas_width = preview_canvas.winfo_width()
+        canvas_height = preview_canvas.winfo_height()
+        dimensions = preview_size(
+            preview_image.size, (canvas_width, canvas_height)
+        )
+        if dimensions is None:
+            return
+
+        display_image = preview_image.resize(dimensions, Image.Resampling.NEAREST)
+        photo = ImageTk.PhotoImage(display_image)
+        preview_canvas.delete("preview")
+        preview_canvas.create_image(
+            canvas_width // 2,
+            canvas_height // 2,
+            image=photo,
+            anchor=tk.CENTER,
+            tags="preview",
+        )
+        preview_canvas.image = photo
 
     def update_preview(_value: str | None = None) -> None:
-        preview = make_monochrome(resized, threshold.get(), invert.get())
-        preview.thumbnail((960, 640))
-        photo = ImageTk.PhotoImage(preview)
-        preview_label.configure(image=photo)
-        preview_label.image = photo
+        nonlocal preview_image
+        preview_image = make_monochrome(resized, threshold.get(), invert.get())
+        render_preview()
 
     def update_save_button() -> None:
         save_button.configure(
-            text="Export LVGL ARGB8888" if export_lvgl.get() else "Save image"
+            text="Export LVGL I1" if export_lvgl.get() else "Save image"
         )
 
     tk.Scale(
@@ -290,7 +340,7 @@ def edit_threshold(
     ).pack(anchor=tk.W, padx=12)
     tk.Checkbutton(
         root,
-        text="Download as LVGL ARGB8888",
+        text="Download as LVGL I1",
         variable=export_lvgl,
         command=update_save_button,
     ).pack(anchor=tk.W, padx=12)
@@ -322,6 +372,7 @@ def edit_threshold(
     save_button = tk.Button(root, text="Save image", command=save_image)
     save_button.pack(pady=(4, 12))
     root.protocol("WM_DELETE_WINDOW", root.destroy)
+    preview_canvas.bind("<Configure>", render_preview)
     update_preview()
     root.mainloop()
     return saved_path

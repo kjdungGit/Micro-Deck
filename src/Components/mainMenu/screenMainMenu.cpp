@@ -71,8 +71,6 @@ void buildMenuImage(lv_obj_t *parent)
     lv_image_set_src(menuImagePane, &menuTree);
     lv_obj_set_size(menuImagePane, 46, 64);
     lv_obj_set_style_border_color(menuImagePane, lv_color_white(), LV_PART_MAIN);
-    lv_obj_set_style_image_recolor(menuImagePane, lv_color_white(), LV_PART_MAIN);
-    lv_obj_set_style_image_recolor_opa(menuImagePane, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_pos(menuImagePane, 128 - 46, 0);
 }
 

@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Monochrome Image Changer",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"Monochrome_image_changer\\main.py"
+			],
+			"isBackground": false,
+			"group": "build"
+		}
+	]
+}

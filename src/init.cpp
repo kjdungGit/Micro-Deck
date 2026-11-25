@@ -197,7 +197,10 @@ void setupUI()
     buildMenuScreen(lv_scr_act());
     setBoot(preferences.getInt("free_boot_count"));
     lv_obj_add_flag(lv_header, LV_OBJ_FLAG_HIDDEN);
-    initMainMenuButtons(buttonManager.getButton(K3_PIN), buttonManager.getButton(K2_PIN), buttonManager.getButton(K4_PIN));
+    initMainMenuButtons(
+        buttonManager.getButton(K2_PIN),
+        buttonManager.getButton(K3_PIN),
+        buttonManager.getButton(K4_PIN));
     buttonK1->pressedFunction = []()
     { toggleMainMenuHeader(); };
 }

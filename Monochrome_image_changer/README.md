@@ -12,10 +12,12 @@ The output uses only pure black and white. The slider thresholds the HSV value
 channel: values below the selected threshold become black, and values at or
 above it become white. The default threshold is `128`. Transparency is retained
 where the source format supports it. The threshold window also has an invert
-checkbox and an option to export the result as an LVGL ARGB8888 C asset. LVGL
-export writes a `.c` image descriptor and a matching `.h` declaration beside
-the selected image. With LVGL export unchecked, the program saves a regular
-image using the selected source format.
+checkbox and an option to export the result as an LVGL I1 C asset with a
+black-and-white palette and packed 1-bit pixels. LVGL export writes a `.c` image
+descriptor and a matching `.h` declaration beside the selected image. With
+LVGL export unchecked, the program saves a regular image using the selected
+source format. The preview resizes to fit the editor window as it is resized,
+preserving the image aspect ratio.
 
 ## Requirements
 

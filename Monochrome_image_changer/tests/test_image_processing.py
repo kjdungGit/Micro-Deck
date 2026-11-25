@@ -6,10 +6,11 @@ from PIL import Image
 
 from main import (
     crop_to_aspect,
-    export_lvgl_argb8888,
+    export_lvgl_i1,
     lvgl_asset_paths_for,
     make_monochrome,
     process_image,
+    preview_size,
     resize_down_to_fit,
 )
 
@@ -64,6 +65,15 @@ class ImageProcessingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             make_monochrome(Image.new("RGB", (1, 1)), threshold=256)
 
+    def test_preview_size_fits_and_upscales_to_viewport(self) -> None:
+        self.assertEqual(preview_size((128, 64), (800, 600)), (800, 400))
+
+    def test_preview_size_limits_to_narrow_viewport(self) -> None:
+        self.assertEqual(preview_size((128, 64), (400, 100)), (200, 100))
+
+    def test_preview_size_returns_none_for_empty_viewport(self) -> None:
+        self.assertIsNone(preview_size((128, 64), (0, 100)))
+
     def test_crop_rejects_non_positive_ratio(self) -> None:
         with self.assertRaises(ValueError):
             crop_to_aspect(Image.new("RGB", (4, 4)), 0, 1)
@@ -105,26 +115,49 @@ class ImageProcessingTests(unittest.TestCase):
                 self.assertEqual(result.size, (4, 4))
                 self.assertEqual(result.getpixel((0, 0)), (255, 255, 255))
 
-    def test_lvgl_export_writes_argb8888_source_and_header(self) -> None:
-        image = Image.new("RGB", (2, 1))
-        image.putdata([(0, 0, 0), (255, 255, 255)])
+    def test_lvgl_export_writes_i1_palette_and_packed_pixels(self) -> None:
+        image = Image.new("RGB", (9, 2))
+        image.putdata(
+            [
+                (255, 255, 255),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (255, 255, 255),
+                (255, 255, 255),
+                (0, 0, 0),
+                (255, 255, 255),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (255, 255, 255),
+            ]
+        )
 
         with TemporaryDirectory() as directory:
             c_path, header_path, symbol = lvgl_asset_paths_for(
                 Path(directory) / "Nazuna.png", 16, 9, 128, 64
             )
-            saved_path = export_lvgl_argb8888(image, c_path, symbol)
+            saved_path = export_lvgl_i1(image, c_path, symbol)
             source = saved_path.read_text(encoding="utf-8")
             header = header_path.read_text(encoding="utf-8")
 
             self.assertEqual(saved_path.suffix, ".c")
-            self.assertIn("LV_COLOR_FORMAT_ARGB8888", source)
+            self.assertIn("LV_COLOR_FORMAT_I1", source)
             self.assertIn(f"const lv_image_dsc_t {symbol}", source)
-            self.assertIn(".header.w = 2", source)
-            self.assertIn(".header.h = 1", source)
+            self.assertIn(".header.stride = 2", source)
+            self.assertIn(".header.w = 9", source)
+            self.assertIn(".header.h = 2", source)
             self.assertIn(f"LV_IMAGE_DECLARE({symbol});", header)
             self.assertIn(
-                "0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff",
+                "0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff,\n"
+                "  0x81, 0x80, 0x40, 0x80,",
                 source,
             )
 
@@ -140,8 +173,8 @@ class ImageProcessingTests(unittest.TestCase):
             self.assertEqual(output_path.suffix, ".c")
             self.assertTrue(output_path.with_suffix(".h").exists())
             source = output_path.read_text(encoding="utf-8")
-            self.assertIn("LV_COLOR_FORMAT_ARGB8888", source)
-            self.assertIn("0x00, 0x00, 0x00, 0xff", source)
+            self.assertIn("LV_COLOR_FORMAT_I1", source)
+            self.assertIn(".header.stride = 1", source)
 
 
 if __name__ == "__main__":

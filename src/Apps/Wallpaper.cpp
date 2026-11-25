@@ -8,6 +8,7 @@
 #include "Components/header.h"
 #include "Components/mainMenu/screenMainMenu.h"
 #include "Image_Assets/Wallpaper/Wallpaper_Nazuna.h"
+#include "Image_Assets/Wallpaper/Wallpaper_BlueStones.h"
 #include "runtime.h"
 
 namespace
@@ -15,14 +16,37 @@ namespace
 constexpr int32_t WALLPAPER_WIDTH = 128;
 constexpr int32_t WALLPAPER_HEIGHT = 64;
 constexpr uint32_t CLOCK_REFRESH_INTERVAL_MS = 1000;
+constexpr uint32_t WALLPAPER_ROTATION_INTERVAL_MS = 15000;
+
+const lv_image_dsc_t *const WALLPAPERS[] = {
+    &Wallpaper_Nazuna,
+    &Wallpaper_BlueStones};
+constexpr size_t WALLPAPER_COUNT = sizeof(WALLPAPERS) / sizeof(WALLPAPERS[0]);
 
 lv_obj_t *wallpaperScreen = nullptr;
 lv_obj_t *wallpaperImage = nullptr;
 lv_obj_t *wallpaperClockLabel = nullptr;
 lv_timer_t *wallpaperTimer = nullptr;
+size_t currentWallpaperIndex = 0;
+uint32_t lastWallpaperChangeMs = 0;
 bool wallpaperHeaderWasHidden = true;
 bool wallpaperClockVisible = true;
 int8_t lastClockSecond = -1;
+
+void showWallpaper(size_t index)
+{
+    currentWallpaperIndex = index % WALLPAPER_COUNT;
+    lv_image_set_src(wallpaperImage, WALLPAPERS[currentWallpaperIndex]);
+    lastWallpaperChangeMs = millis();
+}
+
+void rotateWallpaper(int8_t direction)
+{
+    const size_t nextIndex = direction < 0
+                                 ? (currentWallpaperIndex + WALLPAPER_COUNT - 1) % WALLPAPER_COUNT
+                                 : (currentWallpaperIndex + 1) % WALLPAPER_COUNT;
+    showWallpaper(nextIndex);
+}
 
 void setWallpaperClock()
 {
@@ -42,6 +66,9 @@ void setWallpaperClock()
 
 void wallpaperClockCallback(lv_timer_t *)
 {
+    const uint32_t now = millis();
+    if (now - lastWallpaperChangeMs >= WALLPAPER_ROTATION_INTERVAL_MS)
+        rotateWallpaper(1);
     setWallpaperClock();
 }
 
@@ -64,7 +91,7 @@ void createWallpaperScreen(lv_obj_t *parent)
         return;
     lv_obj_set_size(wallpaperImage, WALLPAPER_WIDTH, WALLPAPER_HEIGHT);
     lv_obj_set_pos(wallpaperImage, 0, 0);
-    lv_image_set_src(wallpaperImage, &Wallpaper_Nazuna);
+    lv_image_set_src(wallpaperImage, WALLPAPERS[currentWallpaperIndex]);
 
     lv_obj_t *closeLabel = lv_label_create(wallpaperScreen);
     lv_obj_set_pos(closeLabel, 1, 1);
@@ -90,6 +117,15 @@ void createWallpaperScreen(lv_obj_t *parent)
     lv_obj_set_style_bg_color(clockHelpLabel, lv_color_black(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(clockHelpLabel, LV_OPA_COVER, LV_PART_MAIN);
     lv_label_set_text(clockHelpLabel, "k2[clk]");
+
+    lv_obj_t *imageHelpLabel = lv_label_create(wallpaperScreen);
+    lv_obj_set_pos(imageHelpLabel, 33, 1);
+    lv_obj_set_size(imageHelpLabel, 50, 8);
+    lv_obj_set_style_text_font(imageHelpLabel, &fixed6, LV_PART_MAIN);
+    lv_obj_set_style_text_color(imageHelpLabel, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(imageHelpLabel, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(imageHelpLabel, LV_OPA_COVER, LV_PART_MAIN);
+    lv_label_set_text(imageHelpLabel, "K3/4 IMG");
 }
 
 void bindWallpaperButtons()
@@ -127,6 +163,8 @@ bool activateWallpaperUI()
 
     wallpaperClockVisible = true;
     lastClockSecond = -1;
+    lastWallpaperChangeMs = millis();
+    lv_image_set_src(wallpaperImage, WALLPAPERS[currentWallpaperIndex]);
     setWallpaperClock();
     lv_obj_clear_flag(wallpaperScreen, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(wallpaperClockLabel, LV_OBJ_FLAG_HIDDEN);
@@ -188,12 +226,19 @@ void processWallpaperInput(int8_t direction)
 void processWallpaperUiInput(int8_t direction)
 {
     configASSERT(isRuntimeUiTask());
-    if (direction != 1 || wallpaperClockLabel == nullptr)
+    if (wallpaperClockLabel == nullptr)
         return;
 
-    wallpaperClockVisible = !wallpaperClockVisible;
-    if (wallpaperClockVisible)
-        lv_obj_clear_flag(wallpaperClockLabel, LV_OBJ_FLAG_HIDDEN);
-    else
-        lv_obj_add_flag(wallpaperClockLabel, LV_OBJ_FLAG_HIDDEN);
+    if (direction == 1)
+    {
+        wallpaperClockVisible = !wallpaperClockVisible;
+        if (wallpaperClockVisible)
+            lv_obj_clear_flag(wallpaperClockLabel, LV_OBJ_FLAG_HIDDEN);
+        else
+            lv_obj_add_flag(wallpaperClockLabel, LV_OBJ_FLAG_HIDDEN);
+    }
+    else if (direction == -1 || direction == 0)
+    {
+        rotateWallpaper(direction);
+    }
 }
